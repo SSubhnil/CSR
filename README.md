@@ -72,3 +72,48 @@ Our code is partly based on the following repositories:
 * [IFactor](https://github.com/AlexLiuyuren/IFactor)
 
 We thank the authors for their excellent work.
+
+---
+
+## Benchmark Fork
+
+> **This fork** ([`benchmark` branch](https://github.com/SSubhnil/CSR/tree/benchmark)) contains modifications for reproducing benchmark comparisons against [DRAMA](https://github.com/SSubhnil/CausalWorldModel). The original CSR code is available at [https://github.com/CMACH508/CSR](https://github.com/CMACH508/CSR).
+
+### Modifications (atari100k only)
+
+1. **ale-py migration** — replaced deprecated `atari-py` + `gym.envs.atari` with `ale-py` + `ale_py.roms` in the Atari wrapper
+2. **Benchmark mode switching** — added `benchmark_switching` config flag that enables episode-boundary mode/difficulty switching via CausalWorldModel's `CSRModeSwitchWrapper`, alongside CSR's native 4-task sequential protocol
+
+### Benchmark Setup (conda)
+
+Requires [CausalWorldModel](https://github.com/SSubhnil/CausalWorldModel) as a sibling directory (or set `CAUSAL_WORLD_MODEL_ROOT` env var) when using `benchmark_switching` mode.
+
+```bash
+# 1. Clone repos as siblings
+git clone -b benchmark https://github.com/SSubhnil/CSR.git
+git clone https://github.com/SSubhnil/CausalWorldModel.git
+
+# 2. Create conda env
+conda create -n csr_atari python=3.10 -y
+conda activate csr_atari
+
+# 3. Install PyTorch with CUDA
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+
+# 4. Install requirements
+cd atari100k
+pip install -r requirements.txt
+```
+
+### Running Benchmarks
+
+```bash
+cd atari100k
+
+# Native CSR protocol (4-task sequential)
+python main.py --configs atari100k --task atari_alien --logdir ./results/alien_native --seed 42
+
+# Benchmark switching (episode-boundary mode switching, matches DRAMA protocol)
+python main.py --configs atari100k --task atari_alien --logdir ./results/alien_benchmark \
+  --benchmark_switching True --benchmark_switch_mode uniform --seed 42
+```

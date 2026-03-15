@@ -161,25 +161,65 @@ def make_dataset(episodes, config):
     return dataset
 
 
+BENCHMARK_TASK_SEQUENCES = {
+    'atari_alien': [[0, 0], [1, 1], [2, 2], [3, 3]],
+    'atari_pong': [[0, 0], [1, 1]],
+    'atari_bank_heist': [[0, 0], [4, 0], [8, 0], [12, 0]],
+    'atari_crazy_climber': [[0, 0], [1, 0], [2, 0], [3, 0]],
+    'atari_gopher': [[0, 0], [2, 0]],
+}
+
+
 def make_env(config, id):
     suite, task = config.task.split("_", 1)
     if suite == "atari":
         import envs.atari as atari
 
-        env = atari.Atari(
-            task,
-            config.action_repeat,
-            config.size,
-            gray=config.grayscale,
-            noops=config.noops,
-            lives=config.lives,
-            sticky=config.stickey,
-            actions=config.actions,
-            resize=config.resize,
-            mode=config.game_mode,
-            difficulty=config.game_difficulty,
-            seed=config.seed + id,
-        )
+        if getattr(config, 'benchmark_switching', False):
+            # Episode-boundary mode switching via CausalWorldModel wrapper
+            # Supports CAUSAL_WORLD_MODEL_ROOT env var for non-sibling layouts.
+            import sys as _sys, os as _os
+            _cwm = pathlib.Path(
+                _os.environ.get("CAUSAL_WORLD_MODEL_ROOT", "")
+            ) if _os.environ.get("CAUSAL_WORLD_MODEL_ROOT") else (
+                pathlib.Path(__file__).resolve().parents[2] / "CausalWorldModel"
+            )
+            if str(_cwm) not in _sys.path:
+                _sys.path.insert(0, str(_cwm))
+            from benchmark.wrappers.csr_mode_switch import CSRModeSwitchWrapper
+
+            task_seq = BENCHMARK_TASK_SEQUENCES.get(config.task, [[0, 0]])
+            switch_mode = getattr(config, 'benchmark_switch_mode', 'uniform')
+
+            env = CSRModeSwitchWrapper(
+                game_name=task,
+                task_sequence=task_seq,
+                switch_mode=switch_mode,
+                seed=config.seed + id,
+                action_repeat=config.action_repeat,
+                size=config.size,
+                gray=config.grayscale,
+                noops=config.noops,
+                lives=config.lives,
+                sticky=config.stickey,
+                actions=config.actions,
+                resize=config.resize,
+            )
+        else:
+            env = atari.Atari(
+                task,
+                config.action_repeat,
+                config.size,
+                gray=config.grayscale,
+                noops=config.noops,
+                lives=config.lives,
+                sticky=config.stickey,
+                actions=config.actions,
+                resize=config.resize,
+                mode=config.game_mode,
+                difficulty=config.game_difficulty,
+                seed=config.seed + id,
+            )
         env = wrappers.OneHotAction(env)
     else:
         raise NotImplementedError(suite)
