@@ -221,6 +221,19 @@ def make_env(config, id):
                 seed=config.seed + id,
             )
         env = wrappers.OneHotAction(env)
+    elif suite == "procgen":
+        import envs.procgen as procgen_env
+        env = procgen_env.ProcGen(
+            task,
+            action_repeat=config.action_repeat,
+            size=config.size,
+            gray=config.grayscale,
+            seed=config.seed + id,
+            distribution_mode=getattr(config, 'distribution_mode', 'hard'),
+            num_levels=getattr(config, 'num_levels', 0),
+            start_level=getattr(config, 'start_level', 0),
+        )
+        env = wrappers.OneHotAction(env)
     else:
         raise NotImplementedError(suite)
     env = wrappers.TimeLimit(env, config.time_limit)
